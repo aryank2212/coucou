@@ -48,8 +48,17 @@ export const Bridge = {
   /** End of a drag: persists the new horizontal offset and repositions. */
   setIslandOffset: (offsetX: number) => call<void>("set_island_offset", { offsetX }),
 
-  /** Give the window keyboard focus (chat field) and take it away again. */
+  /** Give the window real OS keyboard focus — only for the chat text field. */
   focusWindow: (focused: boolean) => call<void>("focus_window", { focused }),
+
+  /**
+   * Lets the OS/compositor hand the window keyboard focus on a click while
+   * the island is expanded, without grabbing it outright (see the Rust side
+   * for why that distinction matters). Toggled on expand/collapse, not tied
+   * to any one view.
+   */
+  setIslandInteractive: (interactive: boolean) =>
+    call<void>("set_island_interactive", { interactive }),
 
   reposition: () => call<void>("reposition"),
 

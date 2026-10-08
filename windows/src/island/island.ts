@@ -262,17 +262,23 @@ export class Island {
     State.mode = mode;
     if (mode === "expanded") {
       Sound.play("open");
-      // Keyboard-interactivity must be elevated for the whole expanded
-      // window, not just while the chat view happens to be open: on Linux a
+      // Keyboard-interactivity must be lifted for the whole expanded window,
+      // not just while the chat view happens to be open: on Linux a
       // gtk-layer-shell surface in keyboard-mode "none" never receives any
       // key event at all — Escape included — so Escape and click-outside
-      // only ever worked if chat had been opened first before this.
-      void Bridge.focusWindow(true);
+      // only ever worked if chat had been opened first before this. This
+      // only *permits* focus on a click, the normal OS/compositor way — it
+      // must not grab it outright, or expanding the island would steal the
+      // keyboard from whatever the user was typing into (their editor, their
+      // terminal). The chat text field still gets a real, explicit focus
+      // grab of its own below, since opening it to type is exactly when that
+      // grab is wanted.
+      void Bridge.setIslandInteractive(true);
     }
     if (prev === "expanded") {
       Sound.play("close");
       State.isPinned = false;
-      void Bridge.focusWindow(false);
+      void Bridge.setIslandInteractive(false);
     }
     if (mode !== "expanded") {
       this.engine.resetMorph();
@@ -920,13 +926,18 @@ export class Island {
       if (on) view.sync();
     }
 
-    // Window-level keyboard focus is now handled once in `setMode` for the
-    // whole expanded window (see there for why) — here we only still need to
-    // give the caret to the chat's own text field once it is on screen.
+    // Window-level keyboard *interactivity* is handled once in `setMode` for
+    // the whole expanded window (see there for why). The chat view is the
+    // only one with a text field, so it is the only one that still needs a
+    // real, explicit focus grab — and the only one that gives it back.
     if (this.lastSyncedView !== State.view) {
+      const wasChat = this.lastSyncedView === "prompt";
       this.lastSyncedView = State.view;
       if (State.view === "prompt") {
+        void Bridge.focusWindow(true);
         window.setTimeout(() => this.views.get("prompt")?.focus?.(), 120);
+      } else if (wasChat) {
+        void Bridge.focusWindow(false);
       }
     }
 

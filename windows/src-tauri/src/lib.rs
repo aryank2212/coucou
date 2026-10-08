@@ -132,19 +132,29 @@ fn set_island_offset(app: AppHandle, shared: State<Shared>, offset_x: f64) {
     let _ = app.emit("settings-changed", updated);
 }
 
+/// Grabs real OS keyboard focus for the chat text field. Only called when the
+/// chat view itself opens/closes — never on every expand, see
+/// `set_island_interactive` for why.
 #[tauri::command]
 fn focus_window(app: AppHandle, focused: bool) {
     let Some(win) = island::window(&app) else { return };
-    // `set_activating` touches raw GTK FFI, which Tauri documents as
-    // main-thread-only; this command runs on a Tokio worker thread, so the
-    // GTK call (and the `set_focus` that follows it) must be dispatched back
-    // to the main thread rather than made directly here.
-    let _ = app.run_on_main_thread(move || {
-        platform::set_activating(&win, focused);
-        if focused {
-            let _ = win.set_focus();
-        }
-    });
+    if focused {
+        let _ = win.set_focus();
+    }
+}
+
+/// Lifts the block on keyboard interaction while the island is expanded,
+/// without taking the keyboard away from whatever the user was typing into:
+/// `set_activating` only removes Windows' `WS_EX_NOACTIVATE` / sets Linux's
+/// gtk-layer-shell keyboard mode to "on demand" — both let the compositor/OS
+/// hand this window keyboard focus the normal way, on a click, rather than
+/// grabbing it outright. The island needs that focus while expanded so that
+/// Escape collapses it and a click elsewhere is noticed (see `blur_handle`
+/// in `run`) from any view, not only chat.
+#[tauri::command]
+fn set_island_interactive(app: AppHandle, interactive: bool) {
+    let Some(win) = island::window(&app) else { return };
+    platform::set_activating(&win, interactive);
 }
 
 #[tauri::command]
@@ -450,6 +460,7 @@ pub fn run() {
             set_island_rect,
             set_island_offset,
             focus_window,
+            set_island_interactive,
             reposition,
             open_url,
             open_in_vscode,

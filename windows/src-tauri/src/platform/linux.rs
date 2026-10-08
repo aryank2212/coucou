@@ -280,8 +280,13 @@ pub fn set_horizontal_margin(win: &WebviewWindow, margin: i32) {
     unsafe { layer::gtk_layer_set_margin(gtk_window_ptr(&gw), layer::EDGE_LEFT, margin) };
 }
 
-/// Temporarily allow keyboard focus so a text field inside the island can be
-/// typed in.
+/// Lifts (or restores) the Wayland-protocol block on keyboard events while
+/// the island is expanded — `KEYBOARD_ON_DEMAND` lets the compositor hand it
+/// keyboard focus the normal way, on a click, same as an ordinary window;
+/// `KEYBOARD_NONE` is a hard protocol-level refusal, not merely "unfocused"
+/// (gtk-layer-shell's own distinction). Neither mode grabs focus outright —
+/// see `set_island_interactive` in `lib.rs`, which calls this on every
+/// expand/collapse, not only while a text field is open.
 pub fn set_activating(win: &WebviewWindow, activating: bool) {
     let Ok(gw) = win.gtk_window() else { return };
     // The island is created `focusable: false` (tauri.linux.conf.json), so GTK

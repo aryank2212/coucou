@@ -225,7 +225,9 @@ pub fn make_non_activating(win: &WebviewWindow) {
     }
 }
 
-/// Temporarily allow activation so a text field inside the island can be typed in.
+/// Lifts (or restores) `WS_EX_NOACTIVATE` while the island is expanded, so a
+/// click on it can focus the window the normal way — this does not itself
+/// grab focus, only permits it; see `set_island_interactive` in `lib.rs`.
 pub fn set_activating(win: &WebviewWindow, activating: bool) {
     let Some(hwnd) = hwnd_of(win) else { return };
     unsafe {
